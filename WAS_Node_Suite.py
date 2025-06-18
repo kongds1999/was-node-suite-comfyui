@@ -2323,41 +2323,13 @@ class WAS_Tools_Class():
         kmeans = KMeans(n_clusters=n_colors, random_state=0, n_init='auto').fit(pixels)
         cluster_centers = np.uint8(kmeans.cluster_centers_)
 
-        # Get the sorted indices based on luminance
-        luminance = np.sqrt(np.dot(cluster_centers, [0.299, 0.587, 0.114]))
-        sorted_indices = np.argsort(luminance)
-
-        # Rearrange the cluster centers and luminance based on sorted indices
+        # 按主色在原图中出现的像素数量排序
+        counts = np.bincount(kmeans.labels_)
+        sorted_indices = np.argsort(-counts)  # 按出现次数降序
         cluster_centers = cluster_centers[sorted_indices]
-        luminance = luminance[sorted_indices]
-
-        # Group colors by their individual types
-        reds = []
-        greens = []
-        blues = []
-        others = []
-
-        for i in range(n_colors):
-            color = cluster_centers[i]
-            color_type = np.argmax(color)  # Find the dominant color component
-
-            if color_type == 0:
-                reds.append((color, luminance[i]))
-            elif color_type == 1:
-                greens.append((color, luminance[i]))
-            elif color_type == 2:
-                blues.append((color, luminance[i]))
-            else:
-                others.append((color, luminance[i]))
-
-        # Sort each color group by luminance
-        reds.sort(key=lambda x: x[1])
-        greens.sort(key=lambda x: x[1])
-        blues.sort(key=lambda x: x[1])
-        others.sort(key=lambda x: x[1])
-
-        # Combine the sorted color groups
-        sorted_colors = reds + greens + blues + others
+        # 亮度也同步排序（如后续需要）
+        luminance = np.sqrt(np.dot(cluster_centers, [0.299, 0.587, 0.114]))
+        # 其余流程保持不变
 
         if mode == 'back_to_back':
             # Calculate the size of the palette image based on the number of colors
@@ -2382,7 +2354,7 @@ class WAS_Tools_Class():
             font = ImageFont.load_default()
 
         hex_palette = []
-        for i, (color, _) in enumerate(sorted_colors):
+        for i, color in enumerate(cluster_centers):
             if mode == 'back_to_back':
                 cell_x = i * cell_size
                 cell_y = 0
@@ -4847,6 +4819,21 @@ class WAS_Mask_Batch:
         return (batched_tensors,)
 
 # IMAGE GENERATE COLOR PALETTE
+from collections import Counter
+def sort_palette_by_proportion(image, palette):
+    # image: PIL.Image
+    # palette: [(r,g,b), ...]
+    img_arr = np.array(image).reshape(-1, 3)
+    palette_arr = np.array(palette)
+    # 计算每个像素到每个色卡的距离，找到最近的色卡索引
+    dists = np.linalg.norm(img_arr[:, None, :] - palette_arr[None, :, :], axis=2)
+    closest_palette_idx = np.argmin(dists, axis=1)
+    # 统计每个色卡出现的像素数
+    counts = Counter(closest_palette_idx)
+    # 按出现次数排序
+    sorted_indices = [idx for idx, _ in counts.most_common()]
+    sorted_palette = [palette[i] for i in sorted_indices]
+    return sorted_palette
 
 class WAS_Image_Color_Palette:
     def __init__(self):
@@ -4857,7 +4844,7 @@ class WAS_Image_Color_Palette:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "colors": ("INT", {"default": 16, "min": 8, "max": 256, "step": 1}),
+                "colors": ("INT", {"default": 16, "min": 5, "max": 256, "step": 1}),
                 "mode": (["Chart", "back_to_back"],),
             },
         }
@@ -12526,7 +12513,7 @@ class WAS_True_Random_Number:
 
     CATEGORY = "WAS Suite/Number"
 
-    def return_true_randm_number(self, api_key=None, minimum=0, maximum=10, mode="random"):
+    def return_true_randm_number(self, api_key=None, minimum=0, maximum=10):
 
         # Get Random Number
         number = self.get_random_numbers(api_key=api_key, minimum=minimum, maximum=maximum)[0]
@@ -12629,7 +12616,7 @@ class WAS_Number_Counter:
         return {
             "required": {
                 "number_type": (["integer", "float"],),
-                "mode": (["increment", "decrement", "increment_to_stop", "decrement_to_stop", "reset_after_stop"],),
+                "mode": (["increment", "decrement", "increment_to_stop", "decrement_to_stop"],),
                 "start": ("FLOAT", {"default": 0, "min": -18446744073709551615, "max": 18446744073709551615, "step": 0.01}),
                 "stop": ("FLOAT", {"default": 0, "min": -18446744073709551615, "max": 18446744073709551615, "step": 0.01}),
                 "step": ("FLOAT", {"default": 1, "min": 0, "max": 99999, "step": 0.01}),
@@ -12669,8 +12656,6 @@ class WAS_Number_Counter:
             counter = counter + step if counter < stop else counter
         elif mode == 'decrement_to_stop':
             counter = counter - step if counter > stop else counter
-        elif mode == 'reset_after_stop':
-            counter = counter + step if counter < stop else start + step
 
         self.counters[unique_id] = counter
 

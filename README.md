@@ -4,6 +4,15 @@
     <img src="https://user-images.githubusercontent.com/1151589/228982359-4a6215cc-3ca9-4c24-8a7b-d229d7bce277.png">
 </p>
 
+---
+### Note
+
+This is a slightly modified version of [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui), which adjusts the sorting problem of generating color lists, and the length of the color list (min 8 -> min 5)
+
+这是一个 [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) 的稍微修改版本，调整了生成颜色列表的排序问题，以及颜色列表长度（最少 8 -> 最少 5）
+
+![](./res/update.png)
+---
 ### A node suite for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with many new nodes, such as image processing, text processing, and more.
 
 #### [Share Workflows](https://github.com/WASasquatch/was-node-suite-comfyui/wiki/Workflow-Examples) to the workflows wiki. Preferably embedded PNGs with workflows, but JSON is OK too. [You can use this tool to add a workflow to a PNG file easily](https://colab.research.google.com/drive/1hQMjNUdhMQ3rw1Wcm3_umvmOMeS_K4s8?usp=sharing).
