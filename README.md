@@ -5,13 +5,18 @@
 </p>
 
 ---
-### Note
+### Update
 
-This is a slightly modified version of [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui), which adjusts the sorting problem of generating color lists, and the length of the color list (min 8 -> min 5)
+This is a slightly modified version of [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui), 
 
-这是一个 [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) 的稍微修改版本，调整了生成颜色列表的排序问题，以及颜色列表长度（最少 8 -> 最少 5）
+这是一个 [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) 的稍微修改版本，
 
-![](./res/update.png)
+- **[2025-06-27]**: Add `vertical` mode to arrange palette,新增纵向排列调色板
+![](./res/20250627.png)
+
+- **[2025‑06‑18]**: which adjusts the sorting problem of generating color lists, and the length of the color list (min 8 -> min 5), 调整了生成颜色列表的排序问题，以及颜色列表长度（最少 8 -> 最少 4）
+
+![](./res/20250618.png)
 ---
 ### A node suite for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with many new nodes, such as image processing, text processing, and more.
 

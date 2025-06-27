@@ -2335,6 +2335,9 @@ class WAS_Tools_Class():
             # Calculate the size of the palette image based on the number of colors
             palette_width = n_colors * cell_size
             palette_height = cell_size
+        elif mode == 'vertical':
+            palette_width = cell_size
+            palette_height = n_colors * cell_size
         else:
             # Calculate the number of rows and columns based on the number of colors
             num_rows = int(np.sqrt(n_colors))
@@ -2358,6 +2361,9 @@ class WAS_Tools_Class():
             if mode == 'back_to_back':
                 cell_x = i * cell_size
                 cell_y = 0
+            elif mode == 'vertical':
+                cell_x = 0
+                cell_y = i * cell_size
             else:
                 row = i % num_rows
                 col = i // num_rows
@@ -2372,7 +2378,7 @@ class WAS_Tools_Class():
             cell = Image.new('RGB', (cell_width, cell_height), color=color)
             palette.paste(cell, (cell_x, cell_y))
 
-            if mode != 'back_to_back':
+            if mode not in ['back_to_back', 'vertical']:
                 text_x = cell_x + (cell_width / 2)
                 text_y = cell_y + cell_height + padding
 
@@ -4844,8 +4850,8 @@ class WAS_Image_Color_Palette:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "colors": ("INT", {"default": 16, "min": 5, "max": 256, "step": 1}),
-                "mode": (["Chart", "back_to_back"],),
+                "colors": ("INT", {"default": 16, "min": 4, "max": 256, "step": 1}),
+                "mode": (["Chart", "back_to_back", "vertical"],),
             },
         }
 
