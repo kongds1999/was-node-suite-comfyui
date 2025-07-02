@@ -11,6 +11,10 @@ This is a slightly modified version of [was-node-suite-comfyui](https://github.c
 
 这是一个 [was-node-suite-comfyui](https://github.com/WASasquatch/was-node-suite-comfyui) 的稍微修改版本，
 
+- **[2025-07-02]**: Keep the original node (reduce the min value), 保留原节点（降低min值）
+
+![](./res/20250702.png)
+
 - **[2025-06-27]**: Add `vertical` mode to arrange palette,新增纵向排列调色板
 ![](./res/20250627.png)
 

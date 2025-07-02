@@ -2323,21 +2323,46 @@ class WAS_Tools_Class():
         kmeans = KMeans(n_clusters=n_colors, random_state=0, n_init='auto').fit(pixels)
         cluster_centers = np.uint8(kmeans.cluster_centers_)
 
-        # 按主色在原图中出现的像素数量排序
-        counts = np.bincount(kmeans.labels_)
-        sorted_indices = np.argsort(-counts)  # 按出现次数降序
-        cluster_centers = cluster_centers[sorted_indices]
-        # 亮度也同步排序（如后续需要）
+        # Get the sorted indices based on luminance
         luminance = np.sqrt(np.dot(cluster_centers, [0.299, 0.587, 0.114]))
-        # 其余流程保持不变
+        sorted_indices = np.argsort(luminance)
+
+        # Rearrange the cluster centers and luminance based on sorted indices
+        cluster_centers = cluster_centers[sorted_indices]
+        luminance = luminance[sorted_indices]
+
+        # Group colors by their individual types
+        reds = []
+        greens = []
+        blues = []
+        others = []
+
+        for i in range(n_colors):
+            color = cluster_centers[i]
+            color_type = np.argmax(color)  # Find the dominant color component
+
+            if color_type == 0:
+                reds.append((color, luminance[i]))
+            elif color_type == 1:
+                greens.append((color, luminance[i]))
+            elif color_type == 2:
+                blues.append((color, luminance[i]))
+            else:
+                others.append((color, luminance[i]))
+
+        # Sort each color group by luminance
+        reds.sort(key=lambda x: x[1])
+        greens.sort(key=lambda x: x[1])
+        blues.sort(key=lambda x: x[1])
+        others.sort(key=lambda x: x[1])
+
+        # Combine the sorted color groups
+        sorted_colors = reds + greens + blues + others
 
         if mode == 'back_to_back':
             # Calculate the size of the palette image based on the number of colors
             palette_width = n_colors * cell_size
             palette_height = cell_size
-        elif mode == 'vertical':
-            palette_width = cell_size
-            palette_height = n_colors * cell_size
         else:
             # Calculate the number of rows and columns based on the number of colors
             num_rows = int(np.sqrt(n_colors))
@@ -2357,13 +2382,10 @@ class WAS_Tools_Class():
             font = ImageFont.load_default()
 
         hex_palette = []
-        for i, color in enumerate(cluster_centers):
+        for i, (color, _) in enumerate(sorted_colors):
             if mode == 'back_to_back':
                 cell_x = i * cell_size
                 cell_y = 0
-            elif mode == 'vertical':
-                cell_x = 0
-                cell_y = i * cell_size
             else:
                 row = i % num_rows
                 col = i // num_rows
@@ -2378,7 +2400,7 @@ class WAS_Tools_Class():
             cell = Image.new('RGB', (cell_width, cell_height), color=color)
             palette.paste(cell, (cell_x, cell_y))
 
-            if mode not in ['back_to_back', 'vertical']:
+            if mode != 'back_to_back':
                 text_x = cell_x + (cell_width / 2)
                 text_y = cell_y + cell_height + padding
 
@@ -4824,6 +4846,88 @@ class WAS_Mask_Batch:
         batched_tensors = batched_tensors.unsqueeze(1)  # Add a channel dimension
         return (batched_tensors,)
 
+class WAS_Tools_Class_v2(WAS_Tools_Class):
+    def __init__(self):
+        super().__init__()
+    
+    def generate_palette_v2(self, img, n_colors=16, cell_size=128, padding=0, font_path=None, font_size=15, mode='chart'):
+        if 'scikit-learn' not in packages():
+            install_package('scikit-learn')
+
+        from sklearn.cluster import KMeans
+
+        img = img.resize((img.width // 2, img.height // 2), resample=Image.BILINEAR)
+        pixels = np.array(img)
+        pixels = pixels.reshape((-1, 3))
+        kmeans = KMeans(n_clusters=n_colors, random_state=0, n_init='auto').fit(pixels)
+        cluster_centers = np.uint8(kmeans.cluster_centers_)
+
+        # 按主色在原图中出现的像素数量排序
+        counts = np.bincount(kmeans.labels_)
+        sorted_indices = np.argsort(-counts)  # 按出现次数降序
+        cluster_centers = cluster_centers[sorted_indices]
+        # 亮度也同步排序（如后续需要）
+        luminance = np.sqrt(np.dot(cluster_centers, [0.299, 0.587, 0.114]))
+        # 其余流程保持不变
+
+        if mode == 'back_to_back':
+            # Calculate the size of the palette image based on the number of colors
+            palette_width = n_colors * cell_size
+            palette_height = cell_size
+        elif mode == 'vertical':
+            palette_width = cell_size
+            palette_height = n_colors * cell_size
+        else:
+            # Calculate the number of rows and columns based on the number of colors
+            num_rows = int(np.sqrt(n_colors))
+            num_cols = int(np.ceil(n_colors / num_rows))
+
+            # Calculate the size of the palette image based on the number of rows and columns
+            palette_width = num_cols * cell_size
+            palette_height = num_rows * cell_size
+
+        palette_size = (palette_width, palette_height)
+
+        palette = Image.new('RGB', palette_size, color='white')
+        draw = ImageDraw.Draw(palette)
+        if font_path:
+            font = ImageFont.truetype(font_path, font_size)
+        else:
+            font = ImageFont.load_default()
+
+        hex_palette = []
+        for i, color in enumerate(cluster_centers):
+            if mode == 'back_to_back':
+                cell_x = i * cell_size
+                cell_y = 0
+            elif mode == 'vertical':
+                cell_x = 0
+                cell_y = i * cell_size
+            else:
+                row = i % num_rows
+                col = i // num_rows
+                cell_x = col * cell_size
+                cell_y = row * cell_size
+
+            cell_width = cell_size
+            cell_height = cell_size
+
+            color = tuple(color)
+
+            cell = Image.new('RGB', (cell_width, cell_height), color=color)
+            palette.paste(cell, (cell_x, cell_y))
+
+            if mode not in ['back_to_back', 'vertical']:
+                text_x = cell_x + (cell_width / 2)
+                text_y = cell_y + cell_height + padding
+
+                draw.text((text_x + 1, text_y + 1), f"R: {color[0]} G: {color[1]} B: {color[2]}", font=font, fill='black', anchor='ms')
+                draw.text((text_x, text_y), f"R: {color[0]} G: {color[1]} B: {color[2]}", font=font, fill='white', anchor='ms')
+
+            hex_palette.append('#%02x%02x%02x' % color)
+
+        return palette, '\n'.join(hex_palette)
+
 # IMAGE GENERATE COLOR PALETTE
 from collections import Counter
 def sort_palette_by_proportion(image, palette):
@@ -4851,7 +4955,7 @@ class WAS_Image_Color_Palette:
             "required": {
                 "image": ("IMAGE",),
                 "colors": ("INT", {"default": 16, "min": 4, "max": 256, "step": 1}),
-                "mode": (["Chart", "back_to_back", "vertical"],),
+                "mode": (["Chart", "back_to_back"],),
             },
         }
 
@@ -4860,6 +4964,7 @@ class WAS_Image_Color_Palette:
     FUNCTION = "image_generate_palette"
 
     CATEGORY = "WAS Suite/Image/Analyze"
+    DESCRIPTION = "从图像生成调色板，按照色彩亮度排序"
 
     def image_generate_palette(self, image, colors=16, mode="chart"):
 
@@ -4890,6 +4995,55 @@ class WAS_Image_Color_Palette:
             palette_image, palette = WTools.generate_palette(image, colors, 128, 10, font, 15, mode.lower())
             return (pil2tensor(palette_image), [palette,])
 
+class WAS_Image_Color_Palette_v2:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "colors": ("INT", {"default": 16, "min": 4, "max": 256, "step": 1}),
+                "mode": (["Chart", "back_to_back", "vertical"],),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE","LIST")
+    RETURN_NAMES = ("image","color_palettes")
+    FUNCTION = "image_generate_palette_v2"
+
+    CATEGORY = "WAS Suite/Image/Analyze"
+    DESCRIPTION = "从图像生成调色板，按照图像占比排序"
+
+    def image_generate_palette_v2(self, image, colors=16, mode="chart"):
+
+        # WAS Filters
+        WTools = WAS_Tools_Class_v2()
+
+        res_dir = os.path.join(WAS_SUITE_ROOT, 'res')
+        font = os.path.join(res_dir, 'font.ttf')
+
+        if not os.path.exists(font):
+            font = None
+        else:
+            if mode == "Chart":
+                cstr(f'Found font at `{font}`').msg.print()
+
+        if len(image) > 1:
+            palette_strings = []
+            palette_images = []
+            for img in image:
+                img = tensor2pil(img)
+                palette_image, palette = WTools.generate_palette_v2(img, colors, 128, 10, font, 15, mode.lower())
+                palette_images.append(pil2tensor(palette_image))
+                palette_strings.append(palette)
+            palette_images = torch.cat(palette_images, dim=0)
+            return (palette_images, palette_strings)
+        else:
+            image = tensor2pil(image)
+            palette_image, palette = WTools.generate_palette_v2(image, colors, 128, 10, font, 15, mode.lower())
+            return (pil2tensor(palette_image), [palette,])
 
 # HEX TO HSL
 
@@ -12519,7 +12673,7 @@ class WAS_True_Random_Number:
 
     CATEGORY = "WAS Suite/Number"
 
-    def return_true_randm_number(self, api_key=None, minimum=0, maximum=10):
+    def return_true_randm_number(self, api_key=None, minimum=0, maximum=10, mode="random"):
 
         # Get Random Number
         number = self.get_random_numbers(api_key=api_key, minimum=minimum, maximum=maximum)[0]
@@ -12622,7 +12776,7 @@ class WAS_Number_Counter:
         return {
             "required": {
                 "number_type": (["integer", "float"],),
-                "mode": (["increment", "decrement", "increment_to_stop", "decrement_to_stop"],),
+                "mode": (["increment", "decrement", "increment_to_stop", "decrement_to_stop", "reset_after_stop"],),
                 "start": ("FLOAT", {"default": 0, "min": -18446744073709551615, "max": 18446744073709551615, "step": 0.01}),
                 "stop": ("FLOAT", {"default": 0, "min": -18446744073709551615, "max": 18446744073709551615, "step": 0.01}),
                 "step": ("FLOAT", {"default": 1, "min": 0, "max": 99999, "step": 0.01}),
@@ -12662,6 +12816,8 @@ class WAS_Number_Counter:
             counter = counter + step if counter < stop else counter
         elif mode == 'decrement_to_stop':
             counter = counter - step if counter > stop else counter
+        elif mode == 'reset_after_stop':
+            counter = counter + step if counter < stop else start + step
 
         self.counters[unique_id] = counter
 
@@ -14425,6 +14581,7 @@ NODE_CLASS_MAPPINGS = {
     "Image Canny Filter": WAS_Canny_Filter,
     "Image Chromatic Aberration": WAS_Image_Chromatic_Aberration,
     "Image Color Palette": WAS_Image_Color_Palette,
+    "Image Color Palette v2": WAS_Image_Color_Palette_v2,
     "Image Crop Face": WAS_Image_Crop_Face,
     "Image Crop Location": WAS_Image_Crop_Location,
     "Image Crop Square Location": WAS_Image_Crop_Square_Location,
